@@ -1,0 +1,6 @@
+{
+  "name": "IoT ESP32 SmartLight",
+  "description": "Dashboard Web untuk mengontrol relay, monitor sensor DHT22 pada ESP32 menggunakan MQTT broker MQTT.io",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

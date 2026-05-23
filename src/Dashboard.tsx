@@ -7,7 +7,7 @@ export default function Dashboard() {
   const [deviceId, setDeviceId] = useState('demo');
   const [activeDeviceId, setActiveDeviceId] = useState('demo');
   
-  const { connected, sensorData, relayStatus, sendCommand } = useMqtt(activeDeviceId);
+  const { connected, sensorData, relayStatus, setRelayStatus, sendCommand } = useMqtt(activeDeviceId);
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -28,8 +28,25 @@ export default function Dashboard() {
 
   const toggleRelay = (index: number) => {
     const currentState = getRelayIsOn(index);
+    const newState = currentState ? 0 : 1;
+    setRelayStatus((prev: any) => ({ ...prev, [`r${index}`]: newState }));
     const command = `r${index}_${currentState ? 'off' : 'on'}`;
     sendCommand(command);
+  };
+
+  const setVariation = (mode: string) => {
+    if (mode === 'v1_on') {
+      setRelayStatus((prev: any) => ({ ...prev, v1: 1, v2: 0 }));
+    } else if (mode === 'v2_on') {
+      setRelayStatus((prev: any) => ({ ...prev, v1: 0, v2: 1 }));
+    } else if (mode === 'v_stop') {
+      setRelayStatus((prev: any) => ({ ...prev, v1: 0, v2: 0, r1: 0, r2: 0, r3: 0, r4: 0 }));
+    } else if (mode === 'all_on') {
+      setRelayStatus((prev: any) => ({ ...prev, r1: 1, r2: 1, r3: 1, r4: 1 }));
+    } else if (mode === 'all_off') {
+      setRelayStatus((prev: any) => ({ ...prev, r1: 0, r2: 0, r3: 0, r4: 0 }));
+    }
+    sendCommand(mode);
   };
 
   return (
@@ -124,8 +141,8 @@ export default function Dashboard() {
               <div className="flex items-center justify-between mb-4">
                  <h2 className="text-xs font-bold text-slate-500 uppercase tracking-widest">Kontrol Relay</h2>
                  <div className="flex gap-2">
-                    <button onClick={() => sendCommand('all_on')} className="px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 text-xs font-bold transition">ALL ON</button>
-                    <button onClick={() => sendCommand('all_off')} className="px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 text-xs font-bold transition">ALL OFF</button>
+                    <button onClick={() => setVariation('all_on')} className="px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 text-xs font-bold transition">ALL ON</button>
+                    <button onClick={() => setVariation('all_off')} className="px-3 py-1.5 rounded bg-slate-800 border border-slate-700 hover:border-slate-600 text-slate-300 text-xs font-bold transition">ALL OFF</button>
                  </div>
               </div>
               
@@ -169,7 +186,7 @@ export default function Dashboard() {
               
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6 h-full items-start">
                 <button
-                  onClick={() => sendCommand('v1_on')}
+                  onClick={() => setVariation('v1_on')}
                   className={`group text-left p-6 rounded-xl border transition-colors
                     ${relayStatus.v1 === 1 
                       ? 'border-indigo-500 bg-indigo-500/10' 
@@ -192,7 +209,7 @@ export default function Dashboard() {
                 </button>
 
                 <button
-                  onClick={() => sendCommand('v2_on')}
+                  onClick={() => setVariation('v2_on')}
                   className={`group text-left p-6 rounded-xl border transition-colors
                     ${relayStatus.v2 === 1 
                       ? 'border-amber-500 bg-amber-500/10' 
@@ -215,7 +232,7 @@ export default function Dashboard() {
                 </button>
 
                 <button
-                  onClick={() => sendCommand('v_stop')}
+                  onClick={() => setVariation('v_stop')}
                   className="group text-left p-6 rounded-xl border border-red-500/20 bg-slate-800 hover:border-red-500/50 transition-colors"
                 >
                   <div className="flex items-center gap-4 mb-4">

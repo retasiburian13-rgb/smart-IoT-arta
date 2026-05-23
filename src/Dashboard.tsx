@@ -4,8 +4,8 @@ import { Power, Thermometer, Droplets, Zap, Layers, Square, Lightbulb } from 'lu
 import { motion } from 'motion/react';
 
 export default function Dashboard() {
-  const [deviceId, setDeviceId] = useState('demo');
-  const [activeDeviceId, setActiveDeviceId] = useState('demo');
+  const [deviceId, setDeviceId] = useState('XX');
+  const [activeDeviceId, setActiveDeviceId] = useState('XX');
   
   const { connected, sensorData, relayStatus, setRelayStatus, sendCommand, logs } = useMqtt(activeDeviceId);
 
@@ -79,7 +79,7 @@ export default function Dashboard() {
                   type="text"
                   value={deviceId}
                   onChange={(e) => setDeviceId(e.target.value)}
-                  placeholder="XX (demo)"
+                  placeholder="XX"
                   className="outline-none bg-transparent w-20 md:w-36 text-slate-200"
                 />
               </div>

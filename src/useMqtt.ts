@@ -1,18 +1,10 @@
 import mqtt from 'mqtt';
 import { useEffect, useState, useCallback } from 'react';
 
-export interface SensorData {
-  suhu: number;
-  kelembaban: number;
-}
-
-export interface RelayStatus {
-  r1: number;
-  r2: number;
-  r3: number;
-  r4: number;
-  v1: number;
-  v2: number;
+export interface EventLog {
+  time: string;
+  message: string;
+  type: 'info' | 'sent' | 'received' | 'error';
 }
 
 export function useMqtt(deviceId: string) {
@@ -20,14 +12,20 @@ export function useMqtt(deviceId: string) {
   const [connected, setConnected] = useState(false);
   const [sensorData, setSensorData] = useState<SensorData>({ suhu: 0, kelembaban: 0 });
   const [relayStatus, setRelayStatus] = useState<RelayStatus>({ r1: 0, r2: 0, r3: 0, r4: 0, v1: 0, v2: 0 });
+  const [logs, setLogs] = useState<EventLog[]>([]);
+
+  const addLog = useCallback((message: string, type: EventLog['type'] = 'info') => {
+    const time = new Date().toLocaleTimeString('en-US', { hour12: false });
+    setLogs((prev) => [{ time, message, type }, ...prev].slice(0, 50)); // Keep last 50
+  }, []);
 
   useEffect(() => {
     if (!deviceId) return;
 
-    // Use Secure WebSockets (wss://) to connect from a web browser
     const mqttUrl = 'wss://broker.emqx.io:8084/mqtt';
     const clientId = `web-client-${Math.random().toString(16).slice(2, 8)}`;
     console.log(`Attempting MQTT connection to: ${mqttUrl} with clientId: ${clientId}`);
+    addLog(`Connecting to ${mqttUrl}...`, 'info');
     
     const mqttClient = mqtt.connect(mqttUrl, {
       clientId,
@@ -40,13 +38,14 @@ export function useMqtt(deviceId: string) {
 
     mqttClient.on('connect', () => {
       console.log('✅ MQTT Connected Successfully!');
+      addLog('MQTT Connected successfully!', 'info');
       setConnected(true);
       const baseTopic = `smartlight/${deviceId}`;
-      // Subscribe to both topics that the ESP32 publishes to
+      
       mqttClient.subscribe(`${baseTopic}/status`);
       mqttClient.subscribe(`${baseTopic}/sensor`);
+      addLog(`Subscribed to ${baseTopic}/#`, 'info');
       
-      // Request initial status and sensor data immediately after connecting
       mqttClient.publish(`${baseTopic}/cmd`, 'get_status');
       mqttClient.publish(`${baseTopic}/cmd`, 'get_sensor');
     });
@@ -54,52 +53,57 @@ export function useMqtt(deviceId: string) {
     mqttClient.on('message', (topic, message) => {
       const baseTopic = `smartlight/${deviceId}`;
       try {
-        const payload = JSON.parse(message.toString());
+        const payloadStr = message.toString();
+        const payload = JSON.parse(payloadStr);
         if (topic === `${baseTopic}/status`) {
           setRelayStatus(payload);
+          addLog(`Status updated: ${payloadStr}`, 'received');
         } else if (topic === `${baseTopic}/sensor`) {
           setSensorData(payload);
+          addLog(`Sensor updated: ${payloadStr}`, 'received');
         }
       } catch (e) {
-        console.error("Invalid JSON from MQTT on topic", topic, ":", message.toString());
+        addLog(`Invalid message on ${topic}`, 'error');
       }
     });
 
     mqttClient.on('error', (err) => {
       console.error('MQTT connection error details:', err.message, err);
-      // Don't call mqttClient.end() here, let it reconnect automatically
+      addLog(`Connection error: ${err.message}`, 'error');
     });
 
     mqttClient.on('disconnect', (packet) => {
-      console.warn('MQTT client disconnected:', packet);
+      addLog('MQTT disconnected', 'error');
     });
 
     mqttClient.on('offline', () => {
-      console.warn('MQTT client went offline');
+      addLog('MQTT currently offline', 'error');
     });
 
     mqttClient.on('reconnect', () => {
-      console.log('MQTT client reconnecting...');
+      addLog('Reconnecting to broker...', 'info');
     });
 
     mqttClient.on('close', () => {
-      console.log('MQTT connection closed');
       setConnected(false);
     });
 
     return () => {
       mqttClient.end();
     };
-  }, [deviceId]);
+  }, [deviceId, addLog]);
 
   const sendCommand = useCallback((cmd: string) => {
     if (client && deviceId) {
-      console.log(`Sending command: ${cmd} to smartlight/${deviceId}/cmd`);
-      client.publish(`smartlight/${deviceId}/cmd`, cmd);
+      const topic = `smartlight/${deviceId}/cmd`;
+      addLog(`Sent cmd: ${cmd}`, 'sent');
+      client.publish(topic, cmd, { qos: 0 }, (error: any) => {
+        if(error) addLog(`Failed to send cmd: ${cmd}`, 'error');
+      });
     } else {
-      console.warn("MQTT client not available to send command:", cmd);
+      addLog(`Client not ready for cmd: ${cmd}`, 'error');
     }
-  }, [client, deviceId]);
+  }, [client, deviceId, addLog]);
 
-  return { connected, sensorData, relayStatus, setRelayStatus, sendCommand };
+  return { connected, sensorData, relayStatus, setRelayStatus, sendCommand, logs };
 }

@@ -7,7 +7,7 @@ export default function Dashboard() {
   const [deviceId, setDeviceId] = useState('demo');
   const [activeDeviceId, setActiveDeviceId] = useState('demo');
   
-  const { connected, sensorData, relayStatus, setRelayStatus, sendCommand } = useMqtt(activeDeviceId);
+  const { connected, sensorData, relayStatus, setRelayStatus, sendCommand, logs } = useMqtt(activeDeviceId);
 
   const handleConnect = (e: React.FormEvent) => {
     e.preventDefault();
@@ -132,6 +132,34 @@ export default function Dashboard() {
                   className="h-full bg-gradient-to-r from-cyan-600 to-cyan-400 transition-all duration-1000"
                   style={{ width: `${Math.min(100, Math.max(0, sensorData.kelembaban))}%` }}
                 />
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="flex-1 p-6 rounded-2xl bg-slate-900 border border-slate-800 flex flex-col min-h-[300px]"
+            >
+              <span className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-4">Recent Events</span>
+              <div className="flex-1 overflow-y-auto pr-2 space-y-3 font-mono text-xs">
+                {logs.length === 0 ? (
+                  <div className="text-slate-600 italic">No events yet...</div>
+                ) : (
+                  logs.map((log, idx) => (
+                    <div key={idx} className="flex gap-3 leading-tight border-b border-slate-800/50 pb-2 last:border-0">
+                      <span className="text-slate-600 shrink-0">[{log.time}]</span>
+                      <span className={`break-all ${
+                        log.type === 'error' ? 'text-red-400' :
+                        log.type === 'sent' ? 'text-indigo-400' :
+                        log.type === 'received' ? 'text-emerald-400' :
+                        'text-slate-300'
+                      }`}>
+                        {log.message}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </motion.div>
           </div>

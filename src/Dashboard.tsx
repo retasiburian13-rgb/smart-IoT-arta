@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useMqtt } from './useMqtt';
 import { Power, Thermometer, Droplets, Zap, Layers, Square, Lightbulb } from 'lucide-react';
 import { motion } from 'motion/react';
+import VoiceCommand from './VoiceCommand';
 
 export default function Dashboard() {
   const [deviceId, setDeviceId] = useState('XX');
@@ -34,6 +35,23 @@ export default function Dashboard() {
     sendCommand(command);
   };
 
+  // ── Voice Command handler ────────────────────────────────────────────────
+  const handleVoiceCommand = (cmd: string) => {
+    if (cmd === 'all_on' || cmd === 'all_off' ||
+        cmd === 'v1_on'  || cmd === 'v2_on'  || cmd === 'v_stop') {
+      setVariation(cmd);
+    } else if (cmd === 'get_sensor') {
+      sendCommand('get_sensor');
+    } else if (/^r[1-4]_(on|off)$/.test(cmd)) {
+      const idx  = parseInt(cmd[1]);
+      const isOn = cmd.endsWith('_on');
+      setRelayStatus((prev: any) => ({ ...prev, [`r${idx}`]: isOn ? 1 : 0 }));
+      sendCommand(cmd);
+    } else {
+      sendCommand(cmd);
+    }
+  };
+
   const setVariation = (mode: string) => {
     if (mode === 'v1_on') {
       setRelayStatus((prev: any) => ({ ...prev, v1: 1, v2: 0 }));
@@ -60,7 +78,7 @@ export default function Dashboard() {
             </div>
             <div>
               <h1 className="font-bold text-xl tracking-tight text-white flex items-center gap-2">
-                IOT-SMARTLIGHT <span className="hidden md:inline text-slate-500 font-mono text-xs uppercase">v2.1.0</span>
+                IOT-SMARTLIGHT <span className="hidden md:inline text-slate-500 font-mono text-xs uppercase">v2.2.0</span>
               </h1>
               <p className="text-xs font-mono text-slate-500">ID: {activeDeviceId}</p>
             </div>
@@ -133,6 +151,15 @@ export default function Dashboard() {
                   style={{ width: `${Math.min(100, Math.max(0, sensorData.kelembaban))}%` }}
                 />
               </div>
+            </motion.div>
+
+            {/* VOICE COMMAND */}
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.15 }}
+            >
+              <VoiceCommand onCommand={handleVoiceCommand} disabled={!connected} />
             </motion.div>
 
             <motion.div 
